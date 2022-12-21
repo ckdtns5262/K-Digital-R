@@ -1,0 +1,84 @@
+df<-read.csv("C:/Rwork/06_국민건강보험공단500.csv")
+
+names(df)
+nrow(df)
+ncol(df)
+# 필요할 열 추출하여 열명 변경
+df1<-df %>% select("시도코드","성별코드","수축기.혈압","이완기.혈압","식전혈당.공복혈당.", "트리글리세라이드","HDL.콜레스테롤","허리둘레")
+names(df1)<-c("시도코드", "성별코드", "수축기혈압","이완기혈압", "공복혈당","트리글리세라이드","HDL콜레스테롤","허리둘레")
+
+
+# 결측치 확인
+summary(df1)
+# 결측치 자료 모두 삭제
+df1<-na.omit(df1)
+
+# 대사증후군 구분
+df1$높은혈압<-ifelse(df1$수축기혈압>=130 & df1$이완기혈압 >=85, 1,0)
+df1$높은혈당<-ifelse(df1$공복혈당>=100 , 1 ,0)                
+df1$높은중성지방<-ifelse(df1$트리글리세라이드>=150,1,0)
+df1$낮은콜레스테롤수치<-ifelse(df1$성별코드==1 & df1$HDL콜레스테롤<40
+                      | df1$성별코드==2 & df1$HDL콜레스테롤<50 ,1,0)
+
+df1$복부비만<-ifelse(df1$성별코드==1 & df1$허리둘레>=90
+                 | df1$성별코드==2 & df1$허리둘레 >=85,1,0)
+
+# rowsums(df1[,11:15])
+df1$대사증후군 <-df1$높은혈압+df1$높은혈당+df1$높은중성지방+df1$낮은콜레스테롤수치
+                  + df1$복부비만 
+
+
+
+df1$판별 <-ifelse(df1$대사증후군==0 ,"정상",
+                     ifelse(df1$대사증후군<=2, "주의군","위험군"))
+
+
+
+
+
+
+# 판별하는 지도학습모델 만들고 정확도
+df1$판별 <- as.factor(df1$판별)
+df1$성별코드 <- as.factor(df1$성별코드)
+
+df1$판별수 <-ifelse(df1$판별 =='정상',1,
+                 ifelse(df1$판별 =='주의군',2,3))
+
+# 지도학습 : 학습데이터와 테스트데이터로 분리
+
+x <- sample(1:nrow(df1),0.7 * nrow(df1))
+train <- df1[x,] # 학습
+test <- df1[-x,] # 검증 테스트데이터
+
+nrow(train)
+nrow(test)
+
+# 지도학습 : 모델 결정후 학습 target = 판별 나머지 = feature
+library(party)
+model <- ctree(판별 ~ 수축기혈압 + 이완기혈압 + 성별코드 + 트리글리세라이드 +
+                 공복혈당 + HDL콜레스테롤 + 허리둘레 , data = train)
+
+# 지도학습 : 예측 ctree 모델을 가지고 
+pred <- predict(model,test)
+pred
+
+# 지도학습 : 성능지표
+cm <- table(pred, test$판별)
+cm
+
+head(test)
+test$예측 <-pred
+test$예측확인 <- ifelse(test$판별 == test$예측,1,0)
+sum(test$예측확인) / nrow(test)
+
+
+
+
+
+
+
+
+
+
+
+
