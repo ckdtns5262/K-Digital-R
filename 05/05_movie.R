@@ -36,7 +36,7 @@ BoxOfficeList %>%
   filter(salesAmt > mean(salesAmt)) %>%
   select(rank, movieNm,salesAmt)
 
-box("20211220")
+box("20221221")
 
 
 
